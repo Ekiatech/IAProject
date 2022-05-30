@@ -28,11 +28,12 @@ class myPlayer(PlayerInterface):
         self._opponentLastMove = None
         self._checkGamesWinner = True
         self._numberTurn = 0
-        self._beginMonteCarlo = 20
+        self._beginMonteCarlo = 12
+        self._depthMonteCarlo = 2
         self._dangerTime = 810
         self._normalDepth = 2
         self._advancedDepth = 4
-        self._numberOfMovesForAdvancedDepth = 20
+        self._numberOfMovesForAdvancedDepth = 30
 
     def getMovesFromGames(self):
         with open('games.json') as json_data:
@@ -48,7 +49,7 @@ class myPlayer(PlayerInterface):
         return "Coralie X Quentin"
 
     def getMove(self):
-        print("THE MOVE :")
+        print("THE MOVE :", self._time)
         if self._opponentLastMove == None:
             moves = np.zeros(82)
             for g in self._gamesWinner:
@@ -72,7 +73,8 @@ class myPlayer(PlayerInterface):
         else:
             n = len(self._board.generate_legal_moves())
             if n < self._beginMonteCarlo:
-                move = self.littleMonteCarlo()
+                depth = self._depthMonteCarlo
+                move = self.littleMonteCarlo(depth)
                 return move
 
             depth = self._normalDepth
@@ -112,9 +114,10 @@ class myPlayer(PlayerInterface):
         self._opponentLastMove = move
         self._numberTurn += 1
 
-        self._gamesWinner = [ g for g in self._gamesWinner if self._numberTurn < len(g["moves"]) and g["moves"][self._numberTurn - 1] == move ]
-        if len(self._gamesWinner) == 0:
-            self._checkGamesWinner = False
+        if self._checkGamesWinner == True:
+            self._gamesWinner = [ g for g in self._gamesWinner if self._numberTurn < len(g["moves"]) and g["moves"][self._numberTurn - 1] == move ]
+            if len(self._gamesWinner) == 0:
+                self._checkGamesWinner = False
         print("AFTER: ", self._gamesWinner)
         # the board needs an internal represetation to push the move.  Not a string
         self._board.push(Goban.Board.name_to_flat(move))
@@ -210,13 +213,7 @@ class myPlayer(PlayerInterface):
         
     def checkOneWayVictory(self):
         if self._board.is_game_over():
-            r = self._board.result()
-            if self._mycolor == 1 and r == "0-1":
-                return True
-            elif self._mycolor == 2 and r == "1-0":
-                return True
-            else:
-                return False
+            return self.checkVictory()
         
         MOVES = self._board.generate_legal_moves()
         move = choice(MOVES)
@@ -225,31 +222,62 @@ class myPlayer(PlayerInterface):
         self._board.pop()
         return isVictory
 
-    def aWayFromMonteCarlo(self):
+    def checkVictory(self):
+        r = self._board.result()
+        if self._mycolor == 1 and r == "0-1":
+            return True
+        elif self._mycolor == 2 and r == "1-0":
+            return True
+        else:
+            return False
+               
+    def theMonteCarlo(self, depth, numberVictory, N):
+        if self._board.is_game_over():
+            result = self.checkVictory()
+            if result == True:
+                return N, numberVictory+1
+            else:
+                return N, numberVictory
+
+        if depth == 0:
+            MOVES = self._board.generate_legal_moves()
+            n = len(MOVES)
+            print("Last longueur moves:", n)
+            for _ in range(n):
+                    N += 1
+                    move = choice(MOVES)
+                    self._board.push(move)
+                    numberVictory += self.checkOneWayVictory() == True
+                    self._board.pop()
+            return (N, numberVictory)
+        else:
+            MOVES = self._board.generate_legal_moves()
+            n = len(MOVES)
+            print("LOngueur Moves :", n)
+            for m in MOVES:
+                self._board.push(m)
+                N, numberVictory = self.theMonteCarlo(depth - 1, numberVictory, N)
+                self._board.pop()
+        return (N, numberVictory)
+
+    def aWayFromMonteCarlo(self, depth):
         if self._board.is_game_over():
             return 1000
+        (N, numberVictory) = self.theMonteCarlo(depth, 0, 0)
+        if depth == 0:
+            N = 1
+        print("ON A :", N, numberVictory)
+        return numberVictory / N
 
-        MOVES = self._board.generate_legal_moves()
-        n = len(MOVES)
-        numberVictory = 0
-
-        for i in range(n):
-            move = choice(MOVES)
-            self._board.push(move)
-            numberVictory += self.checkOneWayVictory() == True
-            self._board.pop()
-
-        return numberVictory
-
-    def littleMonteCarlo(self):
+    def littleMonteCarlo(self, depth):
         MOVES = self._board.generate_legal_moves()
         n = len(MOVES)
         print(MOVES)
         print(n)
         L = np.zeros(n)
-        for i in range(n//2):
+        for i in range(n):
             self._board.push(MOVES[i])
-            L[i] = self.aWayFromMonteCarlo()
+            L[i] = self.aWayFromMonteCarlo(depth)
             print(L[i])
             self._board.pop()
         
