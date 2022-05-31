@@ -26,13 +26,16 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
         self._time = 0
         self._gamesWinner = []
+        self._newGamesWinner = []
         self._opponentLastMove = None
         self._checkGamesWinner = True
+        self._exactOuverture = False
         self._numberTurn = 0
         self._beginMonteCarlo = 15
         self._beginAdvancedMonteCarlo = 5
         self._depthMonteCarlo = 1
         self._advancedDepthMonteCarlo = 2
+        self._numberMaxOfMovesInMonteCarlo = 120
         self._dangerTime = 810
         self._normalDepth = 2
         self._advancedDepth = 4
@@ -47,17 +50,19 @@ class myPlayer(PlayerInterface):
         for g in games:
             if self._mycolor == 1 and g["winner"] == "B":
                 self._gamesWinner.append(g)
+                self._newGamesWinner.append(g)
             elif self._mycolor == 2 and g["winner"] == "W":
                 self._gamesWinner.append(g)
+                self._newGamesWinner.append(g)
+                
+        self._newGamesWinner = choice(self._newGamesWinner)
+
 
     def getPlayerName(self):
-        return "Coralie X Quentin"
+        return "Let's go"
 
-    def getMove(self):
-        if self._opponentLastMove == "PASS":
-            if (self.checkVictory() == True):
-                return -1
-
+    def getMoveFollowingOuvertureExactly(self):
+        #Vérifier s'il s'agit du premier coup de la partie
         if self._opponentLastMove == None:
             moves = np.zeros(82)
             for g in self._gamesWinner:
@@ -66,17 +71,58 @@ class myPlayer(PlayerInterface):
             self._gamesWinner = [ g for g in self._gamesWinner if g["moves"][0] == self._board.move_to_str(move) ]
             return move
         
+        #Vérifier si on doit encore suivre une ouverture, et l'appliquer
         if self._checkGamesWinner == True and self._opponentLastMove != None:
             game = choice(self._gamesWinner)
             if len(game["moves"]) > self._numberTurn:
                 move = game["moves"][self._numberTurn]
                 self._gamesWinner = [ g for g in self._gamesWinner if self._numberTurn < len(g["moves"]) and g["moves"][self._numberTurn] == move ]
                 return self._board.str_to_move(move)
+        return False
 
+    def getMoveFollowingOuverture(self):
+        #Vérifier s'il s'agit du premier coup de la partie
+        if self._opponentLastMove == None:
+            move = self._newGamesWinner["moves"][0]
+            print("VOICI")
+            print(self._newGamesWinner)
+            return self._board.str_to_move(move)
+
+        #Vérifier si on doit encore suivre une ouverture, et l'appliquer
+        if self._checkGamesWinner == True and self._opponentLastMove != None:
+            print("OUVERTURE")
+            MOVES = self._board.generate_legal_moves()
+            if self._numberTurn >= len(self._newGamesWinner["moves"]):
+                return False
+            move = self._board.str_to_move(self._newGamesWinner["moves"][self._numberTurn])
+            for m in MOVES:
+                if m == move:
+                    return move
+            self._checkGamesWinner = False
+        return False
+
+    def getMove(self):
+        #Victoire si on "PASS"
+        if self._opponentLastMove == "PASS":
+            if (self.checkVictory() == True):
+                return -1
+        
+        if self._exactOuverture == True:
+            move = self.getMoveFollowingOuvertureExactly()
+            if move != False:
+                return move
+        else:
+            move = self.getMoveFollowingOuverture()
+            if move != False:
+                return move
+
+        #Si jamais il ne reste plus assez de temps, jouer rapidement
         if self._time > self._dangerTime:
             print("FAST MOVE : ", self._time)
             move = self.fastMove(self._board)
 
+        #Dans les autres cas jouer un coup a l'aide de alphabeta ou MonteCarlo en fonction
+        #du nombre de coups qu'il reste
         else:
             MOVES = self._board.generate_legal_moves()
             n = len(MOVES)
@@ -134,7 +180,7 @@ class myPlayer(PlayerInterface):
 
         if self._checkGamesWinner == True:
             self._gamesWinner = [ g for g in self._gamesWinner if self._numberTurn < len(g["moves"]) and g["moves"][self._numberTurn - 1] == move ]
-            if len(self._gamesWinner) == 0:
+            if len(self._gamesWinner) == 0 and self._exactOuverture == True:
                 self._checkGamesWinner = False
         print("AFTER: ", self._gamesWinner)
         self._time += time.time() - t1
@@ -191,7 +237,7 @@ class myPlayer(PlayerInterface):
     
     def alphaBeta(self, b, depth, isMaximize, coup, alpha, beta):
         if (b.is_game_over() or depth == 0):
-            print("the score :", self.getScore(b), self._board.move_to_str(coup))
+            #print("the score :", self.getScore(b), self._board.move_to_str(coup))
             return (self.getScore(b), coup)
         if (isMaximize):
             val = -1000
@@ -225,7 +271,7 @@ class myPlayer(PlayerInterface):
         moves = b.generate_legal_moves()
         move = choice(moves)
         b.push(move)
-        victory = self.checkOneWayVictory()
+        victory = self.checkOneWayVictory(0)
         maxLoop = 100
         i = 0
         while (victory == False or i < maxLoop):
@@ -233,19 +279,22 @@ class myPlayer(PlayerInterface):
             moves = b.generate_legal_moves()
             move = choice(moves)
             b.push(move)
-            victory = self.checkOneWayVictory()
+            victory = self.checkOneWayVictory(0)
             i += 1
         b.pop()
         return move
         
-    def checkOneWayVictory(self):
+    def checkOneWayVictory(self, n):
         if self._board.is_game_over():
             return self.checkVictory()
         
+        if n > self._numberMaxOfMovesInMonteCarlo:
+            return False
+
         MOVES = self._board.generate_legal_moves()
         move = choice(MOVES)
         self._board.push(move)
-        isVictory = self.checkOneWayVictory()
+        isVictory = self.checkOneWayVictory(n+1)
         self._board.pop()
         return isVictory
 
@@ -274,7 +323,7 @@ class myPlayer(PlayerInterface):
                     N += 1
                     move = choice(MOVES)
                     self._board.push(move)
-                    numberVictory += self.checkOneWayVictory() == True
+                    numberVictory += self.checkOneWayVictory(0) == True
                     self._board.pop()
             return (N, numberVictory)
         else:
@@ -297,6 +346,8 @@ class myPlayer(PlayerInterface):
         (N, numberVictory) = self.theMonteCarlo(depth, 0, 0)
         if depth == 0:
             N = 1
+        if N == 0:
+            return 0
         print("ON A :", N, numberVictory)
         return numberVictory / N
 
