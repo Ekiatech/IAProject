@@ -5,6 +5,7 @@ myPlayer class.
 Right now, this class contains the copy of the randomPlayer. But you have to change this!
 '''
 
+from re import I
 from tabnanny import check
 import time
 import Goban 
@@ -28,12 +29,16 @@ class myPlayer(PlayerInterface):
         self._opponentLastMove = None
         self._checkGamesWinner = True
         self._numberTurn = 0
-        self._beginMonteCarlo = 12
-        self._depthMonteCarlo = 2
+        self._beginMonteCarlo = 15
+        self._beginAdvancedMonteCarlo = 5
+        self._depthMonteCarlo = 1
+        self._advancedDepthMonteCarlo = 3
         self._dangerTime = 810
         self._normalDepth = 2
         self._advancedDepth = 4
+        self._middleDepth = 3
         self._numberOfMovesForAdvancedDepth = 30
+        self._numberOfMovesForMiddleDepth = 50
 
     def getMovesFromGames(self):
         with open('games.json') as json_data:
@@ -50,6 +55,11 @@ class myPlayer(PlayerInterface):
 
     def getMove(self):
         print("THE MOVE :", self._time)
+        print("NUMBER PIERRES : ", self._board._nbBLACK, self._board._nbWHITE)
+        if self._opponentLastMove == "PASS":
+            if (self.checkVictory() == True):
+                return -1
+
         if self._opponentLastMove == None:
             moves = np.zeros(82)
             for g in self._gamesWinner:
@@ -73,12 +83,17 @@ class myPlayer(PlayerInterface):
         else:
             n = len(self._board.generate_legal_moves())
             if n < self._beginMonteCarlo:
-                depth = self._depthMonteCarlo
+                if n < self._beginAdvancedMonteCarlo:
+                    depth = self._advancedDepthMonteCarlo
+                else:
+                    depth = self._depthMonteCarlo
                 move = self.littleMonteCarlo(depth)
                 return move
 
             depth = self._normalDepth
             n = len(self._board.generate_legal_moves())
+            if (n < self._numberOfMovesForMiddleDepth):
+                depth = self._middleDepth
             if (n < self._numberOfMovesForAdvancedDepth):
                 depth = self._advancedDepth
             (val, move) = self.alphaBeta(self._board, depth, True, 0, -10000, 10000)
@@ -140,6 +155,13 @@ class myPlayer(PlayerInterface):
         else:
             return scoreW
 
+    def getScore2(self, b):
+        (nbB, nbW) = (b._nbBLACK, b._nbWHITE)
+        if self._mycolor == 1:
+            return nbB - nbW
+        else:
+            return nbW - nbB
+
     def miniMax(self, b, depth, isMaximize, coup):
         if (b.is_game_over() or depth == 0):
             return (self.getScore(b), coup)
@@ -171,7 +193,7 @@ class myPlayer(PlayerInterface):
             for m in b.generate_legal_moves():
                 b.push(m)
                 eval = self.alphaBeta(b, depth - 1, False, 0, alpha, beta)[0]
-                if val <= eval:
+                if val < eval:
                     coup = m
                 val = max(val, eval)
                 if val >= beta:
@@ -184,7 +206,7 @@ class myPlayer(PlayerInterface):
             for m in b.generate_legal_moves():
                 b.push(m)
                 eval = self.alphaBeta(b, depth - 1, True, 0, alpha, beta)[0]
-                if val >= eval:
+                if val > eval:
                     coup = m
                 val = min(val, eval)
                 if alpha >= val:

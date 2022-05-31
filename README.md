@@ -1,11 +1,20 @@
 # IAProject
 
+## Ce que l'IA peut faire 
+
 Notre IA est implémentée dans le fichier myPlayer.py et possède divers fonctionnalités :
  - minimax qui renvoie la valeur ainsi que le coup
  - alphabeta qui renvoie la valeut ainsi que le coup
  - monteCarlo qui est une approximation de MonteCarlo, en fonction d'une pronfondeur donnée, l'algorithme va évaluer un certain nombre de parties jusqu'à la fin, et faire la moyenne sur le nombre de victoires afin de savoir quel coup prendre
  - gestion des ouvertures, qui tente de reproduire une partie déjà existante si tous les coups coincident
  - gestion du temps, si notre joueur a utilisé plus de 810 secondes (variable self._dangerTime modifiable), alors il joue un coup aléatoire, mais il y a tout de même une vérification que ce coup ne mène pas à la défaite
+
+## Notre heuristique
+
+Pour l'heuristique, nous utilisons simplement la fonction : 
+compute_score() renvoyant le score pour les Noirs et les Blans.
+
+## Notre stratégie finale
 
  Notre stratégie est la suivante :
  1. Au début de la partie, notre jouer va tenter de reproduire une partie déjà existante (gestion des ouvertures), elles sont toutes stockées dans _self.\_gameWinner_
