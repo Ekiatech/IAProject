@@ -125,6 +125,7 @@ class myPlayer(PlayerInterface):
         return Goban.Board.flat_to_name(move) 
 
     def playOpponentMove(self, move):
+        t1 = time.time()
         print("Opponent played ", move) # New here
         self._opponentLastMove = move
         self._numberTurn += 1
@@ -134,6 +135,7 @@ class myPlayer(PlayerInterface):
             if len(self._gamesWinner) == 0:
                 self._checkGamesWinner = False
         print("AFTER: ", self._gamesWinner)
+        self._time += time.time() - t1
         # the board needs an internal represetation to push the move.  Not a string
         self._board.push(Goban.Board.name_to_flat(move))
 
