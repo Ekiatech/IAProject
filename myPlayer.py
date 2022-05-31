@@ -152,6 +152,18 @@ class myPlayer(PlayerInterface):
         else:
             print("I lost :(!!")
 
+
+    def heuristic(self, b):
+        stones_on_board = diff_stones_board(b)
+        stones_captured = diff_stones_captured(b)
+        coeff_board = 1
+        coeff_captured = 1
+        return coeff_board * stones_on_board + coeff_captured * stones_captured
+
+
+    def number_eyes(b):
+        
+
     def getScore(self, b):
         (scoreB, scoreW) = b.compute_score()
         if self._mycolor == 1:
