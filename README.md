@@ -12,7 +12,7 @@ Notre IA est implémentée dans le fichier myPlayer.py et possède divers foncti
 ## Notre heuristique
 
 Pour l'heuristique, nous avons eu différentes idées :
- - utiliser simplement compute_score() renvoyant le score pour les Noirs et les Blans (fonction _getScore()_)
+ - utiliser simplement compute_score() renvoyant le score pour les Noirs et les Blans (fonction _getScore()_) (heuristique actuellement utilisée)
  - utiliser implement la différence de pières (fonction _getScore2()_)
  - utiliser la différence de pières et le nombre de pières capturés avec un certain facteur pour chacun de ces paramètres (fonction _heuristique()_ et _getScore3()_)
 
@@ -29,8 +29,8 @@ Pour la gestion des ouvertures, nous avons une variable _self.\_exactOuverture_ 
  1. Au début de la partie, notre jouer va tenter de reproduire une partie déjà existante (gestion des ouvertures), elles sont toutes stockées dans _self.\_gameWinner_ ou  _self.\_newGameWinner_  (en fonction de si on a passé _self.\_exactOuverture_ à True ou False)
  2. Dès que cela n'est plus possible, notre joueur va réaliser alphabeta avec une profondeur de 2 (variable _self.\_normalDepth_ modifiable)
  3. Dès que le nombre de coups possibles passe en dessous de 50 (_self.\_numberOfMovesForMiddleDepth_), la profondeur passe à 3, et dès que le nombre de coups possibles passe en dessous de 30 (_self.\_numberOfMovesForAdvancedDepth_), la profondeur passe à 4 (_self.\_advancedDepth_)
- 4. Ensuite, dès que le nombre de coups possibles est inférieur à 15 (_self.\_beginMonteCarlo_), c'est la technique MonteCarlo avec une profondeur de 1 (variable _self.\_depthMonteCarlo_ modifiable) qui est mise en place, en dessous de 10, avec une profondeur de 2
- 5. Enfin, dès que le nombre de coups possibles est inférieur à 5 (_self.\_numberOfMovesForExtraDepth_) on refait l'algorithme alphabeta avec une profondeur de 4 (_self.\_advancedDepth_)
+ 4. Ensuite, dès que le nombre de coups possibles est inférieur à 15 (_self.\_beginMonteCarlo_), c'est la technique MonteCarlo avec une profondeur de 1 (variable _self.\_depthMonteCarlo_ modifiable) qui est mise en place, en dessous de 7, avec une profondeur de 2
+ 5. Enfin, dès que le nombre de coups possibles est inférieur à 5 (_self.\_numberOfMovesForExtraDepth_) on refait l'algorithme alphabeta avec une profondeur de 5 (_self.\_extraDepth_)
 
 # Auteurs
 

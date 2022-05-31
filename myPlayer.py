@@ -4,9 +4,6 @@ myPlayer class.
 
 Right now, this class contains the copy of the randomPlayer. But you have to change this!
 '''
-
-from re import I
-from tabnanny import check
 import time
 import Goban 
 from random import choice
@@ -32,13 +29,14 @@ class myPlayer(PlayerInterface):
         self._exactOuverture = False
         self._numberTurn = 0
         self._beginMonteCarlo = 15
-        self._beginAdvancedMonteCarlo = 5
+        self._beginAdvancedMonteCarlo = 7
         self._depthMonteCarlo = 1
         self._advancedDepthMonteCarlo = 2
         self._numberMaxOfMovesInMonteCarlo = 120
         self._dangerTime = 810
         self._normalDepth = 2
         self._advancedDepth = 4
+        self._extraDepth = 5
         self._middleDepth = 3
         self._numberOfMovesForAdvancedDepth = 30
         self._numberOfMovesForMiddleDepth = 50
@@ -155,7 +153,7 @@ class myPlayer(PlayerInterface):
             if (n < self._numberOfMovesForAdvancedDepth):
                 depth = self._advancedDepth
             if (n < self._numberOfMovesForExtraDepth):
-                depth = self._advancedDepth
+                depth = self._extraDepth
             (val, move) = self.alphaBeta(self._board, depth, True, 0, -10000, 10000)
             #(val, move) = self.miniMax(self._board, depth, True, 0, n)
             print("Valeur : ", val, "Coup :", move)
@@ -172,9 +170,6 @@ class myPlayer(PlayerInterface):
         self._board.push(move)
         print("THE SCORE JUST AFTER THE PUSH", self._board.compute_score())
 
-        print("My current board :")
-        self._board.prettyPrint()
-
         # New here: allows to consider internal representations of moves
         print("I am playing ", self._board.move_to_str(move))
         print("My current board :")
@@ -187,7 +182,6 @@ class myPlayer(PlayerInterface):
 
     def playOpponentMove(self, move):
         t1 = time.time()
-        print("BEFORE OPPONENT MOVE", self._board.compute_score())
         print("Opponent played ", move) # New here
         self._opponentLastMove = move
         self._numberTurn += 1
@@ -228,6 +222,7 @@ class myPlayer(PlayerInterface):
         else:
             return scoreW
 
+    #Heuristique utilisant simplement le nombre de pierres de chaque couleur
     def getScore2(self, b):
         (nbB, nbW) = (b._nbBLACK, b._nbWHITE)
         if self._mycolor == 1:
@@ -355,7 +350,6 @@ class myPlayer(PlayerInterface):
         if depth == 0:
             MOVES = self._board.generate_legal_moves()
             n = len(MOVES)
-            print("Last longueur moves:", n)
             for _ in range(n):
                     N += 1
                     move = choice(MOVES)
@@ -366,7 +360,6 @@ class myPlayer(PlayerInterface):
         else:
             MOVES = self._board.generate_legal_moves()
             n = len(MOVES)
-            print("LOngueur Moves :", n)
             for m in MOVES:
                 self._board.push(m)
                 N, numberVictory = self.theMonteCarlo(depth - 1, numberVictory, N)
@@ -387,7 +380,6 @@ class myPlayer(PlayerInterface):
             N = 1
         if N == 0:
             return 0
-        print("ON A :", N, numberVictory)
         return numberVictory / N
 
     #Fonction qui renvoie le coup à effectuer apres le calcul de MonteCarlo
@@ -398,7 +390,6 @@ class myPlayer(PlayerInterface):
         for i in range(n):
             self._board.push(MOVES[i])
             L[i] = self.aWayFromMonteCarlo(depth)
-            print(L[i])
             self._board.pop()
         
         #Le coup à prendre est celui avec la plus forte probabilité de gagner
@@ -406,5 +397,5 @@ class myPlayer(PlayerInterface):
         move = int(MOVES[indexMove])
         if L[indexMove] < 0.00001:
             move = choice(MOVES)
-        print(L[indexMove])
+        print("Monte Carlo, probabilite de gagner :", L[indexMove])
         return move
