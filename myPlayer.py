@@ -32,7 +32,7 @@ class myPlayer(PlayerInterface):
         self._beginMonteCarlo = 15
         self._beginAdvancedMonteCarlo = 5
         self._depthMonteCarlo = 1
-        self._advancedDepthMonteCarlo = 3
+        self._advancedDepthMonteCarlo = 2
         self._dangerTime = 810
         self._normalDepth = 2
         self._advancedDepth = 4
@@ -54,8 +54,6 @@ class myPlayer(PlayerInterface):
         return "Coralie X Quentin"
 
     def getMove(self):
-        print("THE MOVE :", self._time)
-        print("NUMBER PIERRES : ", self._board._nbBLACK, self._board._nbWHITE)
         if self._opponentLastMove == "PASS":
             if (self.checkVictory() == True):
                 return -1
@@ -66,7 +64,6 @@ class myPlayer(PlayerInterface):
                 moves[ self._board.str_to_move(g["moves"][0]) ] += 1
             move = np.argmax(moves)
             self._gamesWinner = [ g for g in self._gamesWinner if g["moves"][0] == self._board.move_to_str(move) ]
-            print(self._gamesWinner)
             return move
         
         if self._checkGamesWinner == True and self._opponentLastMove != None:
@@ -81,7 +78,11 @@ class myPlayer(PlayerInterface):
             move = self.fastMove(self._board)
 
         else:
-            n = len(self._board.generate_legal_moves())
+            MOVES = self._board.generate_legal_moves()
+            n = len(MOVES)
+            if n == 1:
+                return MOVES[0]
+
             if n < self._beginMonteCarlo:
                 if n < self._beginAdvancedMonteCarlo:
                     depth = self._advancedDepthMonteCarlo
@@ -91,7 +92,6 @@ class myPlayer(PlayerInterface):
                 return move
 
             depth = self._normalDepth
-            n = len(self._board.generate_legal_moves())
             if (n < self._numberOfMovesForMiddleDepth):
                 depth = self._middleDepth
             if (n < self._numberOfMovesForAdvancedDepth):
@@ -110,6 +110,7 @@ class myPlayer(PlayerInterface):
        
         move = self.getMove()
         self._board.push(move)
+        print("THE SCORE JUST AFTER THE PUSH", self._board.compute_score())
 
         print("My current board :")
         self._board.prettyPrint()
@@ -126,6 +127,7 @@ class myPlayer(PlayerInterface):
 
     def playOpponentMove(self, move):
         t1 = time.time()
+        print("BEFORE OPPONENT MOVE", self._board.compute_score())
         print("Opponent played ", move) # New here
         self._opponentLastMove = move
         self._numberTurn += 1
@@ -166,7 +168,7 @@ class myPlayer(PlayerInterface):
 
     def miniMax(self, b, depth, isMaximize, coup):
         if (b.is_game_over() or depth == 0):
-            return (self.getScore(b), coup)
+            return (self.getScore(b))
         if (isMaximize):
             val = -1000
             for m in b.generate_legal_moves():
@@ -189,6 +191,7 @@ class myPlayer(PlayerInterface):
     
     def alphaBeta(self, b, depth, isMaximize, coup, alpha, beta):
         if (b.is_game_over() or depth == 0):
+            print("the score :", self.getScore(b), self._board.move_to_str(coup))
             return (self.getScore(b), coup)
         if (isMaximize):
             val = -1000
@@ -286,7 +289,11 @@ class myPlayer(PlayerInterface):
 
     def aWayFromMonteCarlo(self, depth):
         if self._board.is_game_over():
-            return 1000
+            if self.checkVictory() == True:
+                return 1000
+            else:
+                return 0
+
         (N, numberVictory) = self.theMonteCarlo(depth, 0, 0)
         if depth == 0:
             N = 1
@@ -296,8 +303,6 @@ class myPlayer(PlayerInterface):
     def littleMonteCarlo(self, depth):
         MOVES = self._board.generate_legal_moves()
         n = len(MOVES)
-        print(MOVES)
-        print(n)
         L = np.zeros(n)
         for i in range(n):
             self._board.push(MOVES[i])
@@ -306,6 +311,8 @@ class myPlayer(PlayerInterface):
             self._board.pop()
         
         indexMove = np.argmax(L)
-        print()
+        move = int(MOVES[indexMove])
+        if L[indexMove] < 0.00001:
+            move = choice(MOVES)
         print(L[indexMove])
-        return int(MOVES[indexMove])
+        return move
