@@ -42,7 +42,9 @@ class myPlayer(PlayerInterface):
         self._middleDepth = 3
         self._numberOfMovesForAdvancedDepth = 30
         self._numberOfMovesForMiddleDepth = 50
+        self._numberOfMovesForExtraDepth = 5
 
+    #Récupérer les ouvertures du fichier 'games.json'
     def getMovesFromGames(self):
         with open('games.json') as json_data:
             games = json.load(json_data)
@@ -54,13 +56,14 @@ class myPlayer(PlayerInterface):
             elif self._mycolor == 2 and g["winner"] == "W":
                 self._gamesWinner.append(g)
                 self._newGamesWinner.append(g)
-                
+
         self._newGamesWinner = choice(self._newGamesWinner)
 
 
     def getPlayerName(self):
         return "Let's go"
 
+    #Pour suivre exactement une ouverture
     def getMoveFollowingOuvertureExactly(self):
         #Vérifier s'il s'agit du premier coup de la partie
         if self._opponentLastMove == None:
@@ -80,17 +83,16 @@ class myPlayer(PlayerInterface):
                 return self._board.str_to_move(move)
         return False
 
+    #Pour suivre une ouverture
     def getMoveFollowingOuverture(self):
         #Vérifier s'il s'agit du premier coup de la partie
         if self._opponentLastMove == None:
             move = self._newGamesWinner["moves"][0]
-            print("VOICI")
             print(self._newGamesWinner)
             return self._board.str_to_move(move)
 
-        #Vérifier si on doit encore suivre une ouverture, et l'appliquer
+        #Vérifier si on doit encore suivre l'ouverture, et l'appliquer
         if self._checkGamesWinner == True and self._opponentLastMove != None:
-            print("OUVERTURE")
             MOVES = self._board.generate_legal_moves()
             if self._numberTurn >= len(self._newGamesWinner["moves"]):
                 return False
@@ -101,12 +103,22 @@ class myPlayer(PlayerInterface):
             self._checkGamesWinner = False
         return False
 
+    #Récupération du move à jouer
     def getMove(self):
         #Victoire si on "PASS"
         if self._opponentLastMove == "PASS":
             if (self.checkVictory() == True):
                 return -1
         
+        #Verifier si le coup "PASS" fait gagner la partie
+        self._board.push(-1)
+        if (self.checkVictory() == True):
+            self._board.pop()
+            return -1
+        else:
+            self._board.pop()
+        
+        #Utiliser les ouvertures
         if self._exactOuverture == True:
             move = self.getMoveFollowingOuvertureExactly()
             if move != False:
@@ -129,7 +141,7 @@ class myPlayer(PlayerInterface):
             if n == 1:
                 return MOVES[0]
 
-            if n < self._beginMonteCarlo:
+            if n < self._beginMonteCarlo and n > self._numberOfMovesForExtraDepth:
                 if n < self._beginAdvancedMonteCarlo:
                     depth = self._advancedDepthMonteCarlo
                 else:
@@ -141,6 +153,8 @@ class myPlayer(PlayerInterface):
             if (n < self._numberOfMovesForMiddleDepth):
                 depth = self._middleDepth
             if (n < self._numberOfMovesForAdvancedDepth):
+                depth = self._advancedDepth
+            if (n < self._numberOfMovesForExtraDepth):
                 depth = self._advancedDepth
             (val, move) = self.alphaBeta(self._board, depth, True, 0, -10000, 10000)
             #(val, move) = self.miniMax(self._board, depth, True, 0, n)
@@ -178,11 +192,11 @@ class myPlayer(PlayerInterface):
         self._opponentLastMove = move
         self._numberTurn += 1
 
+        #Restreindre le tableau des self._gamesWinner aux parties avec les mêmes coups (exactement)
         if self._checkGamesWinner == True:
             self._gamesWinner = [ g for g in self._gamesWinner if self._numberTurn < len(g["moves"]) and g["moves"][self._numberTurn - 1] == move ]
             if len(self._gamesWinner) == 0 and self._exactOuverture == True:
                 self._checkGamesWinner = False
-        print("AFTER: ", self._gamesWinner)
         self._time += time.time() - t1
         # the board needs an internal represetation to push the move.  Not a string
         self._board.push(Goban.Board.name_to_flat(move))
@@ -198,18 +212,15 @@ class myPlayer(PlayerInterface):
         else:
             print("I lost :(!!")
 
-
+    #Heuristique utilisée avec getScore3()
     def heuristic(self, b):
-        stones_on_board = diff_stones_board(b)
-        stones_captured = diff_stones_captured(b)
+        stones_on_board = b.diff_stones_board()
+        stones_captured = b.diff_stones_captured()
         coeff_board = 1
         coeff_captured = 1
-        return coeff_board * stones_on_board + coeff_captured * stones_captured
+        return coeff_board * stones_on_board + coeff_captured * stones_captured        
 
-
-    def number_eyes(b):
-        
-
+    #Heuristique utilisée actuellement
     def getScore(self, b):
         (scoreB, scoreW) = b.compute_score()
         if self._mycolor == 1:
@@ -223,7 +234,15 @@ class myPlayer(PlayerInterface):
             return nbB - nbW
         else:
             return nbW - nbB
+    
+    def getScore3(self, b):
+        score = self.heuristic(b)
+        if self._mycolor == 1:
+            return score
+        else:
+            return -score
 
+    #Algorithme minimax qui renvoie la valeur et le coup à effectuer
     def miniMax(self, b, depth, isMaximize, coup):
         if (b.is_game_over() or depth == 0):
             return (self.getScore(b))
@@ -247,6 +266,7 @@ class myPlayer(PlayerInterface):
                 b.pop()
         return (val, coup)
     
+    #Algorithme alphabeta qui renvoie la valeur et le coup à effectuer
     def alphaBeta(self, b, depth, isMaximize, coup, alpha, beta):
         if (b.is_game_over() or depth == 0):
             #print("the score :", self.getScore(b), self._board.move_to_str(coup))
@@ -279,6 +299,7 @@ class myPlayer(PlayerInterface):
                 b.pop()
         return (val, coup)
 
+    #Fonction pour jouer très rapidement un coup
     def fastMove(self, b):
         moves = b.generate_legal_moves()
         move = choice(moves)
@@ -295,7 +316,9 @@ class myPlayer(PlayerInterface):
             i += 1
         b.pop()
         return move
-        
+    
+    #Verifier si en jouant des coups aléatoires à partir du plateau actuel
+    #on gagne ou perd la partie
     def checkOneWayVictory(self, n):
         if self._board.is_game_over():
             return self.checkVictory()
@@ -310,6 +333,7 @@ class myPlayer(PlayerInterface):
         self._board.pop()
         return isVictory
 
+    #Renvoie True si on gagne la partie, False si on perd la partie
     def checkVictory(self):
         r = self._board.result()
         if self._mycolor == 1 and r == "0-1":
@@ -318,7 +342,8 @@ class myPlayer(PlayerInterface):
             return True
         else:
             return False
-               
+    
+    #Fonction qui effectue le MonteCarlo avec une profondeur
     def theMonteCarlo(self, depth, numberVictory, N):
         if self._board.is_game_over():
             result = self.checkVictory()
@@ -348,6 +373,8 @@ class myPlayer(PlayerInterface):
                 self._board.pop()
         return (N, numberVictory)
 
+    #Fonction qui pour chaque coup possible à effectuer renvoie 
+    # la probabilite de victoire
     def aWayFromMonteCarlo(self, depth):
         if self._board.is_game_over():
             if self.checkVictory() == True:
@@ -363,6 +390,7 @@ class myPlayer(PlayerInterface):
         print("ON A :", N, numberVictory)
         return numberVictory / N
 
+    #Fonction qui renvoie le coup à effectuer apres le calcul de MonteCarlo
     def littleMonteCarlo(self, depth):
         MOVES = self._board.generate_legal_moves()
         n = len(MOVES)
@@ -373,6 +401,7 @@ class myPlayer(PlayerInterface):
             print(L[i])
             self._board.pop()
         
+        #Le coup à prendre est celui avec la plus forte probabilité de gagner
         indexMove = np.argmax(L)
         move = int(MOVES[indexMove])
         if L[indexMove] < 0.00001:
